@@ -128,6 +128,8 @@ class Generator(nn.Module):
 
         self.outConv = nn.Conv2d(64, out_channels, kernel_size=1)
 
+        # Initialize weights of the generator network
+        self.apply(self.init_weights)
 
     def forward(self, input):
         x0 = self.encoder0(input)
@@ -148,13 +150,45 @@ class Generator(nn.Module):
 
         return self.outConv(x)
     
+    @staticmethod
+    def init_weights(m):
+        if isinstance(m, nn.Conv2d):
+            nn.init.normal_(m.weight, mean=0.0, std=0.02)
+            nn.init.constant_(m.bias, 0)
+    
 
 class Discriminator(nn.Module):
     """
-    Implementing a simple Convolution Neural Network as a discriminator
+    Implementing a simple Neural Network as a discriminator.
+        The network has 5 blocks of ResNet and 2 linear layers.
     """
-    def __init__(self, in_channel):
+    def __init__(self, in_channels):
         super(Discriminator, self).__init__()
 
+        self.discriminator = nn.Sequential(
+            ResBlock_Down(in_channels, 32, first_layer=True),
+            ResBlock_Down(32, 64, stride=2),
+            ResBlock_Down(64, 128, stride=2),
+            ResBlock_Down(128, 256, stride=2),
+            ResBlock_Down(256, 512, stride=2),
+            nn.MaxPool2d(kernel_size=2),
+            nn.Flatten(),
+            nn.Linear(32768, 128),
+            nn.ReLU(inplace=True),
+            nn.Linear(128, 1), 
+            nn.Sigmoid()
+        )
+
+        # Initialize weights of the discriminator network
+        self.apply(self.init_weights)
+            
+
     def forward(self, input_image):
-        pass
+        
+        return self.discriminator(input_image)
+
+    @staticmethod
+    def init_weights(m):
+        if isinstance(m, nn.Conv2d) or isinstance(m, nn.Linear):
+            nn.init.normal_(m.weight, mean=0.0, std=0.02)
+            nn.init.constant_(m.bias, 0)
