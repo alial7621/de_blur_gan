@@ -9,11 +9,13 @@ class PerceptualLoss(torch.nn.Module):
     def __init__(self):
         super(PerceptualLoss, self).__init__()
         self.VGG16 = vgg16_bn(weights=VGG16_BN_Weights.DEFAULT)
+        self.VGG16.eval()
         self.mse_loss = torch.nn.MSELoss()
 
     def forward(self, real_image, generated_image):
-        real_img_embed = self.VGG16(real_image)
-        gen_img_embed = self.VGG16(generated_image)
+        with torch.no_grad():
+            real_img_embed = self.VGG16(real_image)
+            gen_img_embed = self.VGG16(generated_image)
 
         return self.mse_loss(real_img_embed, gen_img_embed)
 

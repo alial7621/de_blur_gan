@@ -5,7 +5,7 @@ import cv2 as cv
 import os
 
 
-class DataLoader(Dataset):
+class GoProDataLoader(Dataset):
     """
         Loading the dataset for training
     """
@@ -19,10 +19,10 @@ class DataLoader(Dataset):
             dataset_path: Path of the dataset list.
 
         Example:
-        train_dataset = DataLoader(root_path="gopro", dataset_path="gopro.train.csv")
+        train_dataset = GoProDataLoader(root_path="gopro", dataset_path="gopro.train.csv")
         """
         
-        super(DataLoader, self).__init__()
+        super(GoProDataLoader, self).__init__()
         self.root_path = root_path
         self.dataset = pd.read_csv(dataset_path)
 
@@ -31,8 +31,13 @@ class DataLoader(Dataset):
         selected_image = self.dataset.iloc[index]
 
         # path
-        sharp_image_path = os.path.join(self.root_path, selected_image["Folder_name"] + "/sharp/" + selected_image["File_name"])
-        blur_image_path = os.path.join(self.root_path, selected_image["Folder_name"] + "/blur/" + selected_image["File_name"])
+        # sharp_image_path = os.path.join(self.root_path, 
+        #                                 selected_image["Folder_name"] + "/sharp/" + selected_image["File_name"])
+        # blur_image_path = os.path.join(self.root_path, 
+        #                                selected_image["Folder_name"] + "/blur/" + selected_image["File_name"])
+
+        sharp_image_path = os.path.join(self.root_path, "/sharp/" + selected_image["File_name"])
+        blur_image_path = os.path.join(self.root_path, "/blur/" + selected_image["File_name"])
 
         # Read and convert to torch tensor
         sharp_image = torch.from_numpy(cv.imread(sharp_image_path))
