@@ -84,7 +84,7 @@ class Generator(nn.Module):
     Implementation of Residual UNet architecture as the generator
     """
 
-    def __init__(self, in_channels, out_channels=3, downsample_rate=8):
+    def __init__(self, in_channels=3, out_channels=3, downsample_rate=8):
         """
         Initializing UNet architecture for the generator
 
@@ -162,7 +162,7 @@ class Discriminator(nn.Module):
     Implementing a simple Neural Network as a discriminator.
         The network has 5 blocks of ResNet and 2 linear layers.
     """
-    def __init__(self, in_channels):
+    def __init__(self, in_channels=3):
         super(Discriminator, self).__init__()
 
         self.discriminator = nn.Sequential(
