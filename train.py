@@ -1,4 +1,4 @@
-from deblur_modules.config import args
+import deblur_modules.config as config
 from deblur_modules.data_loader import GoProDataLoader
 from deblur_modules.models import Generator, Discriminator
 from deblur_modules.losses import wasserstein_loss, PerceptualLoss
@@ -32,20 +32,25 @@ def save_ckpt(path, gen_model, critic_model, gen_optim, critic_optim,
     torch.save(state, path)
 
 
-def train(opts):
+def train(args):
     
-    if args['USE_MAN_SEED']:
-        np.random.seed(args["SEED"])
-        torch.manual_seed(args["SEED"])
+    if args.use_manual_seed:
+        np.random.seed(args.seed)
+        torch.manual_seed(args.seed)
+        
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # prepare datalaoders
-    train_data = GoProDataLoader(root_path=args["DATA_DIR"], dataset_path=args["DATASET_DIR"])
-    train_loader = DataLoader(train_data, batch_size=args["BATCH_SIZE"], shuffle=True)
+    train_data = GoProDataLoader(root_path=args.data_dir, dataset_path=args.dataset_dir)
+    train_loader = DataLoader(train_data, batch_size=args.batch_size, shuffle=True)
 
     # Resize augmentation
+    if type(args.image_size) == int:
+        image_size = (args.image_size, args.image_size)
+    else:
+        image_size = tuple(args.image_size)
     transform = v2.Compose([
-        v2.Resize(size=args["IMAGE_SIZE"])
+        v2.Resize(size=image_size)
     ])
 
     # Initiate models 
@@ -53,50 +58,59 @@ def train(opts):
     generator.to(device)
 
     critic = Discriminator()
-    critic.to(device)
+    critic.to(device)       
 
     # Loss functions and optimizers
     precept_loss = PerceptualLoss()
-    gen_optimizer = torch.optim.Adam(generator.parameters(), lr=args["INIT_LR"], 
-                                     betas=(args["MOMENTUM1"], args["MOMENTUM2"]))
-    critic_optimizer = torch.optim.Adam(critic.parameters(), lr=args["INIT_LR"], 
-                                     betas=(args["MOMENTUM1"], args["MOMENTUM2"]))
-  
-    gen_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(gen_optimizer, mode="min", factor=args["WEIGHT_DECAY"],
-                                             patience=args["LR_WAIT"], threshold=args["LR_THRESH"],
-                                             threshold_mode="abs", min_lr=args["FINAL_LR"], verbose=True)  
-    critic_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(critic_optimizer, mode="min", factor=args["WEIGHT_DECAY"],
-                                             patience=args["LR_WAIT"], threshold=args["LR_THRESH"],
-                                             threshold_mode="abs", min_lr=args["FINAL_LR"], verbose=True)  
-    
+    gen_optimizer = torch.optim.Adam(generator.parameters(), lr=args.init_lr, 
+                                        betas=(args.momentum1, args.momentum2))
+    critic_optimizer = torch.optim.Adam(critic.parameters(), lr=args.init_lr, 
+                                        betas=(args.momentum1, args.momentum2))
 
-    if opts.ckpt is not None and os.path.isfile(opts.ckpt):
-        checkpoint = torch.load(opts.ckpt, map_location="cpu")
-        model.load_state_dict(checkpoint["model_state"], strict=True)
-        optimizer.load_state_dict(checkpoint["optimizer_state"])
-        scheduler.load_state_dict(checkpoint["scheduler_state"])
+    gen_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(gen_optimizer, mode="min", factor=args.weight_decay_factor,
+                                                patience=args.lr_wait, threshold=args.lr_thresh,
+                                                threshold_mode="abs", min_lr=args.final_lr, verbose=True)  
+    critic_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(critic_optimizer, mode="min", factor=args.weight_decay_factor,
+                                                patience=args.lr_wait, threshold=args.lr_thresh,
+                                                threshold_mode="abs", min_lr=args.final_lr, verbose=True)  
+
+    cur_epoch = 1
+    gen_loss_history = []
+    critic_loss_history = []
+
+    if args.load_checkpoint is not None and os.path.isfile(args.load_checkpoint):
+        checkpoint = torch.load(args.load_checkpoint, map_location="cpu")
+        generator.load_state_dict(checkpoint["gen_state"], strict=True)
+        critic.load_state_dict(checkpoint["critic_state"], strict=True)
+
+        gen_optimizer.load_state_dict(checkpoint["gen_optim_state"])
+        critic_optimizer.load_state_dict(checkpoint["critic_optim_state"])
+        
+        gen_scheduler.load_state_dict(checkpoint["gem_schdlr_state"])
+        critic_scheduler.load_state_dict(checkpoint["critic_schdlr_state"])
+
         cur_epoch = checkpoint["epoch"] + 1
-        best_score = checkpoint['best_score']
-        logger.info("[!] Model restored from %s" % opts.ckpt)
-        # if we want to resume training, resume trainer from checkpoint
-        if 'trainer_state' in checkpoint:
-            trainer.load_state_dict(checkpoint['trainer_state'])
+        gen_loss_history = checkpoint['gen_loss_history']
+        critic_loss_history = checkpoint['critic_loss_history']
+
+        # logger.info("[!] Model restored from %s" % args.load_checkpoint)
         del checkpoint
     else:
-        if opts.step == 0:
-            logger.info("[!] Train from scratch")
+        pass
+        # logger.info("[!] Train from scratch")
 
+    # TODO Save best model and last model. Best model is based on a generator model with the minimum loss
+        
 if __name__ == '__main__':
-    
+
     parser = config.get_argparser()
 
-    opts = parser.parse_args()
-    opts = config.modify_command_options(opts)
+    args = parser.parse_args()
 
     # Create checkpoint directory
-    if not os.path.exists(args["CODE_DIR"] + "/checkpoints"):
-        os.mkdir(args["CODE_DIR"] + "/checkpoints")
-        os.mkdir(args["CODE_DIR"] + "/checkpoints/models")
+    if not os.path.exists(args.checkpoint_dir):
+        os.mkdir(args.checkpoint_dir)
+        os.mkdir(args.checkpoint_dir + "/models")
 
-    train(opts)
+    train(args)
 
