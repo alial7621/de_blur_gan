@@ -1,25 +1,43 @@
+import argparse
 
-args = dict()
+def get_argparser():
+    parser = argparse.ArgumentParser()
 
-# data
-args["CODE_DIR"] = "./" 
-args["SAVED_WEIGHTS_DIR"] = "./weights"
-args["DATASET_DIR"] = "./"
-args["DATA_DIR"] = '/content/drive/MyDrive/Datasets/Thesis/AV-RelScore/datasets'
-args["PRETRAINED_MODEL"] =  None
+    # Data
+    parser.add_argument("--code_dir", type=str, default="./")
+    parser.add_argument("--checkpoints_dir", type=str, default="./checkpoints")
+    parser.add_argument("--dataset_dir", type=str, default="./", 
+                        help="path to the dataset csv file")
+    parser.add_argument("--data_dir", type=str, default="./dataset")
+    parser.add_argument("--trained_model", type=str, default="./checkpoints/models/final_generator.pth")
 
-# train
-args["USE_MAN_SEED"] = False # Whether use manual seed or not
-args["SEED"] = 72323
-args["IMAGE_SIZE"] = (256, 256)
-args["CRITIC_UPDATE"] = 5 # Number of iterations of critical model in each batch iteration
-args["BATCH_SIZE"] = 4 
-args["EPOCHS"] = 50
-args["SAVE_FREQ"] = 5 #saving the model weights and loss/metric plots after every these many steps
-
-#optimizer and scheduler
-args["INIT_LR"] = 1e-4  #initial learning rate for scheduler
-args["FINAL_LR"] = 1e-11 #final learning rate for scheduler
-args["WEIGHT_DECAY"] = 0.5   #learning rate decrease factor for scheduler
-args["MOMENTUM1"] = 0.9 #optimizer momentum 1 value
-args["MOMENTUM2"] = 0.999   #optimizer momentum 2 value
+    # Train
+    parser.add_argument("--use_manual_seed", type=bool, default=False, help="Whether use manual seed or not")
+    parser.add_argument("--seed", type=int, default=72322)
+    parser.add_argument("--image_size", type=int, nargs="+", default=256,
+                        help="Size of the input image to the model. It should be entered like two seperated integer number. Default=256x256")
+    parser.add_argument("--critic_update", type=int, default=5, 
+                        help="Number of iterations of critical model in each batch iteration")
+    parser.add_argument("--batch_size", type=int, default=4)
+    parser.add_argument("--epochs", type=int, default=50)
+    parser.add_argument("--save_freq", type=int, default=5, 
+                        help="Saving the model weights and loss/metric plots after every these many steps")
+    parser.add_argument("--load_checkpoint", type=str, default=None,
+                        help="Start from the last checkpoint")
+    
+    # Optimizer and scheduler
+    parser.add_argument("--init_lr", type=float, default=1e-4,
+                        help="Initial learning rate for scheduler")
+    parser.add_argument("--final_lr", type=float, default=1e-11,
+                        help="Final learning rate for scheduler")
+    parser.add_argument("--weight_decay_factor", type=float, default=0.5,
+                        help="Weight decay factor for scheduler")
+    parser.add_argument("--lr_wait", type=int, default=3,
+                        help="Number of cicles without significant improvement in loss for scheduler")
+    parser.add_argument("--lr_thresh", type=float, default=1e-3,
+                        help="Threshold to check plateau-ing of loss")
+    parser.add_argument("--momentum1", type=float, default=0.9,
+                        help="Optimizer momentum 1 value")
+    parser.add_argument("--momentum2", type=float, default=0.999,
+                        help="Optimizer momentum 1 value")
+    
