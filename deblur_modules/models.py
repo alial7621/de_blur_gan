@@ -170,7 +170,7 @@ class Discriminator(nn.Module):
             ResBlock_Down(32, 64, stride=2),
             ResBlock_Down(64, 128, stride=2),
             ResBlock_Down(128, 256, stride=2),
-            ResBlock_Down(256, 512, stride=2),
+            ResBlock_Down(256, 256, stride=2),
             nn.MaxPool2d(kernel_size=2),
             nn.Flatten(),
             nn.Linear(32768, 128),
