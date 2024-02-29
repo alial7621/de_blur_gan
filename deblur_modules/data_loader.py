@@ -36,8 +36,8 @@ class GoProDataLoader(Dataset):
         # blur_image_path = os.path.join(self.root_path, 
         #                                selected_image["Folder_name"] + "/blur/" + selected_image["File_name"])
 
-        sharp_image_path = os.path.join(self.root_path, "/sharp/" + selected_image["File_name"])
-        blur_image_path = os.path.join(self.root_path, "/blur/" + selected_image["File_name"])
+        sharp_image_path = os.path.join(self.root_path, "sharp/" + selected_image["File_name"])
+        blur_image_path = os.path.join(self.root_path, "blur/" + selected_image["File_name"])
 
         # Read and convert to torch tensor
         sharp_image = torch.from_numpy(cv.imread(sharp_image_path))
