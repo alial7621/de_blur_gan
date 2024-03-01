@@ -1,5 +1,6 @@
 from torchvision.models import resnet18, ResNet18_Weights
 from torch.nn import MSELoss, Module
+import torch
 import copy
 
 def hook(module, input, output):
@@ -27,8 +28,8 @@ class PerceptualLoss(Module):
         return self.mse_loss(real_img_embed, gen_img_embed)
 
 
-def wasserstein_loss(disc_output_real, disc_output_gen):
+def wasserstein_loss(y_true, disc_output):
     """
     Get critics output for real and generated image and return the loss
     """
-    return torch.mean(disc_output_real*disc_output_gen)
+    return torch.mean(y_true*disc_output)

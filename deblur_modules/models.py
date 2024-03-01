@@ -69,7 +69,7 @@ class ResBlock_Up(nn.Module):
 
     def forward(self, input, skip_input):
         x = self.up_samples(input)
-        x = torch.cat([x, skip_input], dim=0)
+        x = torch.cat([x, skip_input], dim=1)
 
         res = self.conv1x1(x)
         x = self.res_block(x)
@@ -173,7 +173,7 @@ class Discriminator(nn.Module):
             ResBlock_Down(256, 256, stride=2),
             nn.MaxPool2d(kernel_size=2),
             nn.Flatten(),
-            nn.Linear(32768, 128),
+            nn.Linear(16384, 128),
             nn.ReLU(inplace=True),
             nn.Linear(128, 1)
         )
