@@ -36,7 +36,7 @@ class GoProDataLoader(Dataset):
         blur_image_path = os.path.join(self.root_path, selected_image["Folder_name"] + "/blur/" + selected_image["File_name"])
 
         # Read an image and change the channel axis to be in the first position instead of last: 
-        # (Width,Height, channel) => (channel, Width, Height)
+        # (Height, Width, channel) => (channel, Height, Width)
         sharp_image = np.moveaxis(cv.imread(sharp_image_path), -1, 0)
         blur_image = np.moveaxis(cv.imread(blur_image_path), -1, 0)
 

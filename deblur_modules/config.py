@@ -9,7 +9,7 @@ def get_argparser():
     parser.add_argument("--dataset_dir", type=str, default="./dataset.csv", 
                         help="path to the dataset csv file")
     parser.add_argument("--data_dir", type=str, default="./dataset")
-    parser.add_argument("--trained_model", type=str, default="./checkpoints/models/final_generator.pth")
+    parser.add_argument("--trained_model", type=str, default="./checkpoints/models/best_model.pt")
 
     # Train
     parser.add_argument("--use_manual_seed", type=bool, default=False, help="Whether use manual seed or not")
@@ -23,7 +23,11 @@ def get_argparser():
     parser.add_argument("--save_freq", type=int, default=5, 
                         help="Saving the model weights and loss/metric plots after every these many steps")
     parser.add_argument("--load_checkpoint", type=str, default=None,
-                        help="Start from the last checkpoint")
+                        help="Start from the last checkpoint. Always refer as last_model.pt")
+    parser.add_argument("--c_lambda", type=float, default=10,
+                        help="indicate the amount of the gradient penalty in critic loss")
+    parser.add_argument("--percept_weight", type=float, default=10,
+                        help="Weight of the perceptual loss in the calculation of the generator model loss")
     
     # Optimizer and scheduler
     parser.add_argument("--init_lr", type=float, default=1e-4,
