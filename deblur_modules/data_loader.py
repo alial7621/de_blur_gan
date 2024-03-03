@@ -1,6 +1,7 @@
 import torch
 from torch.utils.data import Dataset
 import pandas as pd
+import numpy as np
 import cv2 as cv
 import os
 
@@ -31,17 +32,17 @@ class GoProDataLoader(Dataset):
         selected_image = self.dataset.iloc[index]
 
         # path
-        # sharp_image_path = os.path.join(self.root_path, 
-        #                                 selected_image["Folder_name"] + "/sharp/" + selected_image["File_name"])
-        # blur_image_path = os.path.join(self.root_path, 
-        #                                selected_image["Folder_name"] + "/blur/" + selected_image["File_name"])
+        sharp_image_path = os.path.join(self.root_path, selected_image["Folder_name"] + "/sharp/" + selected_image["File_name"])
+        blur_image_path = os.path.join(self.root_path, selected_image["Folder_name"] + "/blur/" + selected_image["File_name"])
 
-        sharp_image_path = os.path.join(self.root_path, "sharp/" + selected_image["File_name"])
-        blur_image_path = os.path.join(self.root_path, "blur/" + selected_image["File_name"])
+        # Read an image and change the channel axis to be in the first position instead of last: 
+        # (Width,Height, channel) => (channel, Width, Height)
+        sharp_image = np.moveaxis(cv.imread(sharp_image_path), -1, 0)
+        blur_image = np.moveaxis(cv.imread(blur_image_path), -1, 0)
 
-        # Read and convert to torch tensor
-        sharp_image = torch.from_numpy(cv.imread(sharp_image_path))
-        blur_image = torch.from_numpy(cv.imread(blur_image_path))
+        # Covert it to torch tensor
+        sharp_image = torch.from_numpy(sharp_image)
+        blur_image = torch.from_numpy(blur_image)
 
         return sharp_image, blur_image
 
