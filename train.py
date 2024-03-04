@@ -65,6 +65,9 @@ def train(args):
     # Initiate models 
     generator = Generator()
     critic = Discriminator()
+    # set the device for both models
+    generator.to(device)
+    critic.to(device)
 
     num_params, num_trainables = num_params_func(generator)
     print(f"Number of total parameters in the generator model: {num_params}")
@@ -75,7 +78,7 @@ def train(args):
     print(f"Number of trainable parameters in the discriminator model: {num_trainables}\n")
 
     # Loss functions and optimizers
-    percept_loss = PerceptualLoss()
+    percept_loss = PerceptualLoss(device=device)
     gen_optimizer = torch.optim.Adam(generator.parameters(), lr=args.init_lr, 
                                         betas=(args.momentum1, args.momentum2))
     critic_optimizer = torch.optim.Adam(critic.parameters(), lr=args.init_lr, 
@@ -95,7 +98,7 @@ def train(args):
 
     if args.load_checkpoint is not None and os.path.isfile(args.load_checkpoint):
         print("A checkpoint detected")
-        checkpoint = torch.load(args.load_checkpoint, map_location="cpu")
+        checkpoint = torch.load(args.load_checkpoint, map_location=device)
         generator.load_state_dict(checkpoint["gen_state"], strict=True)
         critic.load_state_dict(checkpoint["critic_state"], strict=True)
 
@@ -116,16 +119,13 @@ def train(args):
         del checkpoint
     else:
         print("There is no checkpoint. The models will be trained from the scratch")
-
-    # set the device for both models
-    generator.to(device)
-    critic.to(device)
     
     while cur_epoch <= args.epochs:
         print(f"Epoch: {cur_epoch}")
         gen_loss = 0
         critic_loss = 0
-
+        generator.train()
+        
         for input_data in tqdm(train_loader):
             input_data[0], input_data[1] = (input_data[0].float()).to(device), (input_data[1].float()).to(device)
             # Resize the images
@@ -134,7 +134,6 @@ def train(args):
 
             # set the generator model grad to zero and get the generated image
             gen_optimizer.zero_grad()
-            generator.train()
             generated_image = generator(blury_image)
             
             # The source of the following code for training the critic model is https://www.kaggle.com/code/rafat97/pytorch-wasserstein-gan-wgan 
@@ -145,7 +144,7 @@ def train(args):
                 critic_score_sharp = critic(sharp_image)
                 critic_score_gen = critic(generated_image)
 
-                epsilon = torch.rand(args.batch_size, 1, 1, 1, device=device, requires_grad=True)
+                epsilon = torch.rand(len(sharp_image), 1, 1, 1, device=device, requires_grad=True)
                 gradient = get_gradient(critic, sharp_image, generated_image, epsilon)
                 gp = gradient_penalty(gradient)
                 final_critic_loss = wasserstein_loss(critic_score_gen, critic_score_sharp, gp, args.c_lambda)
@@ -170,26 +169,27 @@ def train(args):
             overall_generator_loss.backward()
             gen_optimizer.step()
             
-            # save the best and last model
-            generator.eval()
-            save_ckpt(args.checkpoint_dir + "/last_model.pt", gen_model=generator, critic_model=critic,
-                      gen_optim=gen_optimizer, critic_optim=critic_optimizer, gen_schdlr=gen_scheduler, critic_schdlr=critic_scheduler,
-                      epoch=cur_epoch, gen_loss_history=gen_loss_history, critic_loss_history=critic_loss_history)
-            if overall_generator_loss.item() < best_loss:
-                best_loss = overall_generator_loss.item()
-                # For the best model, we just need to save the generator model
-                torch.save(generator.state_dict(), args.checkpoint_dir + "/best_model.pt")
-
-        cur_epoch += 1
         gen_loss = gen_loss / len(train_loader)
         critic_loss = critic_loss / len(train_loader)
         print(f"Loss for the generator model: {gen_loss}, Loss for the critic model: {critic_loss}")
-
+        
         gen_loss_history.append(gen_loss)
         critic_loss_history.append(critic_loss)
 
         gen_scheduler.step(gen_loss)
         critic_scheduler.step(critic_loss)
+        
+        # save the best and last model
+        generator.eval()
+        save_ckpt(args.checkpoint_dir + "/models/last_model.pt", gen_model=generator, critic_model=critic,
+                  gen_optim=gen_optimizer, critic_optim=critic_optimizer, gen_schdlr=gen_scheduler, critic_schdlr=critic_scheduler,
+                  epoch=cur_epoch, gen_loss_history=gen_loss_history, critic_loss_history=critic_loss_history)
+        if gen_loss < best_loss:
+            best_loss = gen_loss
+            # For the best model, we just need to save the generator model
+            torch.save(generator.state_dict(), args.checkpoint_dir + "/models/best_model.pt")
+
+        cur_epoch += 1
 
     # Draw and save the loss history diagram
     plt.figure()

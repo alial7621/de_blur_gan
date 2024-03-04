@@ -15,9 +15,9 @@ class PerceptualLoss(Module):
     Perceptual loss is an MSE loss between the intermediate embeddings of two images using a pre-trained ResNet18.
     """
 
-    def __init__(self):
+    def __init__(self, device):
         super(PerceptualLoss, self).__init__()
-        self.resnet = resnet18(weights=ResNet18_Weights.IMAGENET1K_V1)
+        self.resnet = resnet18(weights=ResNet18_Weights.IMAGENET1K_V1).to(device)
         # set third layer of the ResNet model to the hook function
         desired_layer = self.resnet.layer3[-1]
         desired_layer.register_forward_hook(hook)
