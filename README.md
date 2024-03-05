@@ -1,2 +1,4 @@
 # de_blur_gan
-Implementing Generative Adversarial Network to de blur images
+Implementing a Generative Adversarial Network to restore (deblur) images
+
+The requirement file, weights, results, etc. will be available soon.
