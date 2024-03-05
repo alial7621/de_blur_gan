@@ -22,15 +22,15 @@ def get_argparser():
     parser.add_argument("--epochs", type=int, default=50)
     parser.add_argument("--save_freq", type=int, default=5, 
                         help="Saving the model weights and loss/metric plots after every these many steps")
-    parser.add_argument("--load_checkpoint", type=str, default=None,
+    parser.add_argument("--load_checkpoint", type=str, default="./checkpoints/models/last_model.pt",
                         help="Start from the last checkpoint. Always refer as last_model.pt")
     parser.add_argument("--c_lambda", type=float, default=10,
                         help="indicate the amount of the gradient penalty in critic loss")
-    parser.add_argument("--percept_weight", type=float, default=10,
+    parser.add_argument("--percept_weight", type=float, default=100,
                         help="Weight of the perceptual loss in the calculation of the generator model loss")
     
     # Optimizer and scheduler
-    parser.add_argument("--init_lr", type=float, default=1e-4,
+    parser.add_argument("--init_lr", type=float, default=1e-5,
                         help="Initial learning rate for scheduler")
     parser.add_argument("--final_lr", type=float, default=1e-11,
                         help="Final learning rate for scheduler")
@@ -40,7 +40,7 @@ def get_argparser():
                         help="Number of cicles without significant improvement in loss for scheduler")
     parser.add_argument("--lr_thresh", type=float, default=1e-3,
                         help="Threshold to check plateau-ing of loss")
-    parser.add_argument("--momentum1", type=float, default=0.9,
+    parser.add_argument("--momentum1", type=float, default=0.5,
                         help="Optimizer momentum 1 value")
     parser.add_argument("--momentum2", type=float, default=0.999,
                         help="Optimizer momentum 1 value")

@@ -1,33 +1,20 @@
-from torchvision.models import resnet18, ResNet18_Weights
+from torchvision.models import vgg16_bn, VGG16_BN_Weights
 from torch.nn import MSELoss, Module
 import torch
-import copy
-
-def hook(module, input, output):
-    """
-    The hook function is used to get the intermediate embedding of the model.
-    """
-    global intermediate_output
-    intermediate_output = output
 
 class PerceptualLoss(Module):
     """
-    Perceptual loss is an MSE loss between the intermediate embeddings of two images using a pre-trained ResNet18.
+    Perceptual loss is an MSE loss between the intermediate embeddings of two images using a pre-trained VGG16 model.
     """
 
     def __init__(self, device):
         super(PerceptualLoss, self).__init__()
-        self.resnet = resnet18(weights=ResNet18_Weights.IMAGENET1K_V1).to(device)
-        # set third layer of the ResNet model to the hook function
-        desired_layer = self.resnet.layer3[-1]
-        desired_layer.register_forward_hook(hook)
+        self.vgg16 = vgg16_bn(weights=VGG16_BN_Weights.IMAGENET1K_V1).features.to(device)
         self.mse_loss = MSELoss()
 
     def forward(self, sharp_images, generated_images):
-        self.resnet(sharp_images)
-        real_img_embed = copy.deepcopy(intermediate_output.detach())
-        self.resnet(generated_images)
-        gen_img_embed = intermediate_output
+        real_img_embed = self.vgg16(sharp_images)
+        gen_img_embed = self.vgg16(generated_images)
 
         return self.mse_loss(real_img_embed, gen_img_embed)
 
