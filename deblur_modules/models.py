@@ -127,6 +127,7 @@ class Generator(nn.Module):
         self.decoder3 = ResBlock_Up(192, 64)
 
         self.outConv = nn.Conv2d(64, out_channels, kernel_size=1)
+        self.tanh_act = nn.Tanh()
 
         # Initialize weights of the generator network
         self.apply(self.init_weights)
@@ -147,8 +148,9 @@ class Generator(nn.Module):
         x = self.decoder1(x, x2)
         x = self.decoder2(x, x1)
         x = self.decoder3(x, x0)
+        x = self.outConv(x)
 
-        return self.outConv(x)
+        return self.tanh_act(x)
     
     @staticmethod
     def init_weights(m):
@@ -166,16 +168,13 @@ class Discriminator(nn.Module):
         super(Discriminator, self).__init__()
 
         self.discriminator = nn.Sequential(
-            ResBlock_Down(in_channels, 32, first_layer=True),
-            ResBlock_Down(32, 64, stride=2),
+            ResBlock_Down(in_channels, 64, first_layer=True),
             ResBlock_Down(64, 128, stride=2),
             ResBlock_Down(128, 256, stride=2),
-            ResBlock_Down(256, 256, stride=2),
-            nn.MaxPool2d(kernel_size=2),
-            nn.Flatten(),
-            nn.Linear(16384, 128),
-            nn.ReLU(inplace=True),
-            nn.Linear(128, 1)
+            ResBlock_Down(256, 512, stride=2),
+            nn.BatchNorm2d(512),
+            nn.LeakyReLU(0.2, inplace=True),
+            nn.Conv2d(512, 1, kernel_size=3, stride=1)
         )
 
         # Initialize weights of the discriminator network
