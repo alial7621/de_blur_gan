@@ -1,0 +1,9 @@
+torch
+torchvision
+numpy
+matplotlib
+opencv-python
+tqdm
+click
+pandas
+argparse
