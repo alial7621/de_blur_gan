@@ -1,6 +1,8 @@
-from torchvision.models import vgg16_bn, VGG16_BN_Weights
+# from torchvision.models import vgg16_bn, VGG16_BN_Weights
+from torchvision.models import resnet50, ResNet50_Weights
 from torch.nn import MSELoss, Module
 import torch
+from torch import nn
 
 class PerceptualLoss(Module):
     """
@@ -9,12 +11,21 @@ class PerceptualLoss(Module):
 
     def __init__(self, device):
         super(PerceptualLoss, self).__init__()
-        self.vgg16 = vgg16_bn(weights=VGG16_BN_Weights.IMAGENET1K_V1).features.to(device)
+        self.resnet50 = resnet50(weights="IMAGENET1K_V1").to(device)
+        self.resnet50.eval()
+        self.res_feat = nn.Sequential(*list(self.resnet50.children())[:-2])
+        # self.vgg16 = vgg16_bn(weights=VGG16_BN_Weights.IMAGENET1K_V1).features.to(device)
         self.mse_loss = MSELoss()
 
-    def forward(self, sharp_images, generated_images):
-        real_img_embed = self.vgg16(sharp_images)
-        gen_img_embed = self.vgg16(generated_images)
+    def forward(self, sharp_images, generated_images, val=False):
+        if val:
+            with torch.no_grad():
+                real_img_embed = self.res_feat(sharp_images)
+                gen_img_embed = self.res_feat(generated_images)
+
+        else:
+            real_img_embed = self.res_feat(sharp_images)
+            gen_img_embed = self.res_feat(generated_images)
 
         return self.mse_loss(real_img_embed, gen_img_embed)
 

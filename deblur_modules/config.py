@@ -6,9 +6,9 @@ def get_argparser():
     # Data
     parser.add_argument("--code_dir", type=str, default="./")
     parser.add_argument("--checkpoint_dir", type=str, default="./checkpoints")
-    parser.add_argument("--dataset_dir", type=str, default="./data/train_samples.csv", 
+    parser.add_argument("--dataset_dir", type=str, default="./data", 
                         help="path to the dataset csv file")
-    parser.add_argument("--data_dir", type=str, default="./dataset")
+    parser.add_argument("--data_dir", type=str, default="/content")
     parser.add_argument("--trained_model", type=str, default="./checkpoints/models/best_model.pt")
 
     # Train
@@ -18,7 +18,7 @@ def get_argparser():
                         help="Size of the input image to the model. It should be entered like two seperated integer number. Default=256x256")
     parser.add_argument("--critic_update", type=int, default=5, 
                         help="Number of iterations of critical model in each batch iteration")
-    parser.add_argument("--batch_size", type=int, default=4)
+    parser.add_argument("--batch_size", type=int, default=8)
     parser.add_argument("--epochs", type=int, default=50)
     parser.add_argument("--save_freq", type=int, default=5, 
                         help="Saving the model weights and loss/metric plots after every these many steps")
@@ -30,11 +30,11 @@ def get_argparser():
                         help="Weight of the perceptual loss in the calculation of the generator model loss")
     
     # Optimizer and scheduler
-    parser.add_argument("--init_lr", type=float, default=1e-5,
+    parser.add_argument("--init_lr", type=float, default=1e-2,
                         help="Initial learning rate for scheduler")
-    parser.add_argument("--final_lr", type=float, default=1e-11,
+    parser.add_argument("--final_lr", type=float, default=1e-6,
                         help="Final learning rate for scheduler")
-    parser.add_argument("--weight_decay_factor", type=float, default=0.5,
+    parser.add_argument("--weight_decay_factor", type=float, default=0.2,
                         help="Weight decay factor for scheduler")
     parser.add_argument("--lr_wait", type=int, default=3,
                         help="Number of cicles without significant improvement in loss for scheduler")

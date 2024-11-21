@@ -169,12 +169,14 @@ class Discriminator(nn.Module):
 
         self.discriminator = nn.Sequential(
             ResBlock_Down(in_channels, 64, first_layer=True),
+            ResBlock_Down(64, 64, stride=2),
             ResBlock_Down(64, 128, stride=2),
+            ResBlock_Down(128, 128, stride=2),
             ResBlock_Down(128, 256, stride=2),
-            ResBlock_Down(256, 512, stride=2),
-            nn.BatchNorm2d(512),
+            ResBlock_Down(256, 256, stride=1),
+            nn.BatchNorm2d(256),
             nn.LeakyReLU(0.2, inplace=True),
-            nn.Conv2d(512, 1, kernel_size=3, stride=1)
+            nn.Conv2d(256, 1, kernel_size=3, stride=1)
         )
 
         # Initialize weights of the discriminator network
