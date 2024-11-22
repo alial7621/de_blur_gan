@@ -146,7 +146,7 @@ def train(args):
         print("There is no checkpoint. The models will be trained from the scratch")
 
     while cur_epoch <= args.epochs:
-        print(f"Epoch: {cur_epoch}/{args.epochs}")
+        print(f"Epoch: {cur_epoch} of {args.epochs}")
         gen_loss = 0
         critic_loss = 0
         gen_test_loss = 0
@@ -165,6 +165,33 @@ def train(args):
             sharp_images = transform(input_data[0])
             blury_images = transform(input_data[1])
             
+            ###########################
+            # Train Critic
+            ###########################
+            critic_optimizer.zero_grad()
+            generated_images = generator(blury_images).detach()
+
+            # The source of the following code for training the critic model is https://www.kaggle.com/code/rafat97/pytorch-wasserstein-gan-wgan  
+            for _ in range(args.critic_update):  
+                # train the critic model on the original image
+                critic_score_sharp = critic(sharp_images)
+                critic_score_gen = critic(generated_images)
+
+                epsilon = torch.rand(len(sharp_images), 1, 1, 1, device=device, requires_grad=True)
+                gradient = get_gradient(critic, sharp_images, generated_images, epsilon)
+                gp = gradient_penalty(gradient)
+                final_critic_loss = wasserstein_loss(critic_score_gen, critic_score_sharp, gp, args.c_lambda)
+
+                final_critic_loss.backward()
+
+                critic_optimizer.step()
+
+                critic_loss += (final_critic_loss.item() / args.critic_update)
+
+            # Compute metrics
+            train_SSIM += SSIM(sharp_images, generated_images, device)
+            train_PSNR += PSNR(sharp_images, generated_images, device)
+
             ###########################
             # Train Generator
             ###########################
@@ -186,34 +213,6 @@ def train(args):
             overall_generator_loss.backward()
             gen_optimizer.step()
             
-            ###########################
-            # Train Critic
-            ###########################
-            critic_optimizer.zero_grad()
-
-            # The source of the following code for training the critic model is https://www.kaggle.com/code/rafat97/pytorch-wasserstein-gan-wgan  
-            for rng in range(args.critic_update):  
-                # train the critic model on the original image
-                generated_images = generator(blury_images).detach()
-
-                critic_score_sharp = critic(sharp_images)
-                critic_score_gen = critic(generated_images)
-
-                epsilon = torch.rand(len(sharp_images), 1, 1, 1, device=device, requires_grad=True)
-                gradient = get_gradient(critic, sharp_images, generated_images, epsilon)
-                gp = gradient_penalty(gradient)
-                final_critic_loss = wasserstein_loss(critic_score_gen, critic_score_sharp, gp, args.c_lambda)
-
-                final_critic_loss.backward()
-
-                critic_optimizer.step()
-
-                critic_loss += (final_critic_loss.item() / args.critic_update)
-
-            # Compute metrics
-            train_SSIM += SSIM(sharp_images, generated_images, device)
-            train_PSNR += PSNR(sharp_images, generated_images, device)
-
         # Final training loss 
         gen_loss = gen_loss / len(train_loader)
         critic_loss = critic_loss / len(train_loader)
