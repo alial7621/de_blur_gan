@@ -6,7 +6,7 @@ from torch import nn
 
 class PerceptualLoss(Module):
     """
-    Perceptual loss is an MSE loss between the intermediate embeddings of two images using a pre-trained VGG16 model.
+    Perceptual loss is an MSE loss between the intermediate embeddings of two images using a pre-trained ResNet model.
     """
 
     def __init__(self, device):

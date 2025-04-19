@@ -3,6 +3,26 @@ import torch.nn.functional as F
 import torch
 
 
+class CNNBlock(nn.Module):
+    """
+    Basic CNN block for the discriminator.
+    """
+    def __init__(self, in_channels, out_channels, stride=2, use_bn=True, use_activation=True):
+        super(CNNBlock, self).__init__()
+        self.conv = nn.Conv2d(
+            in_channels, 
+            out_channels, 
+            kernel_size=4, 
+            stride=stride, 
+            padding=1, 
+            bias=not use_bn
+        )
+        self.bn = nn.BatchNorm2d(out_channels) if use_bn else nn.Identity()
+        self.activation = nn.LeakyReLU(0.2, inplace=True) if use_activation else nn.Identity()
+        
+    def forward(self, x):
+        return self.activation(self.bn(self.conv(x)))
+
 class ResBlock_Down(nn.Module):
     """
     Implementation of Residual block for downsampling part of Unet.
@@ -157,38 +177,61 @@ class Generator(nn.Module):
         if isinstance(m, nn.Conv2d):
             nn.init.normal_(m.weight, mean=0.0, std=0.02)
             nn.init.constant_(m.bias, 0)
+        elif isinstance(m, nn.BatchNorm2d):
+            nn.init.constant_(m.weight, 1)
+            nn.init.constant_(m.bias, 0)
     
 
 class Discriminator(nn.Module):
     """
-    Implementing a simple Neural Network as a discriminator.
-        The network has 5 blocks of ResNet and 2 linear layers.
+    PatchGAN Discriminator for image denoising GAN.
+    This discriminator classifies whether overlapping image patches are real or fake,
+    rather than classifying the entire image.
     """
-    def __init__(self, in_channels=3):
+    def __init__(self, in_channels=3, features=64, n_layers=3):
         super(Discriminator, self).__init__()
-
-        self.discriminator = nn.Sequential(
-            ResBlock_Down(in_channels, 64, first_layer=True),
-            ResBlock_Down(64, 64, stride=2),
-            ResBlock_Down(64, 128, stride=2),
-            ResBlock_Down(128, 128, stride=2),
-            ResBlock_Down(128, 256, stride=2),
-            ResBlock_Down(256, 256, stride=1),
-            nn.BatchNorm2d(256),
-            nn.LeakyReLU(0.2, inplace=True),
-            nn.Conv2d(256, 1, kernel_size=3, stride=1)
-        )
-
-        # Initialize weights of the discriminator network
-        self.apply(self.init_weights)
-            
-
-    def forward(self, input_image):
         
-        return self.discriminator(input_image)
-
-    @staticmethod
-    def init_weights(m):
-        if isinstance(m, nn.Conv2d) or isinstance(m, nn.Linear):
-            nn.init.normal_(m.weight, mean=0.0, std=0.02)
-            nn.init.constant_(m.bias, 0)
+        # Initial layer without batch normalization
+        self.initial = CNNBlock(
+            in_channels, 
+            features, 
+            stride=2, 
+            use_bn=False
+        )
+        
+        # Feature multiplier for each layer
+        mult = 1
+        mult_prev = 1
+        
+        # Middle layers with increasing feature size
+        layers = []
+        for i in range(1, n_layers):
+            mult_prev = mult
+            mult = min(2 ** i, 8)  # Cap at 8x to avoid excessive parameters
+            layers.append(
+                CNNBlock(
+                    features * mult_prev,
+                    features * mult,
+                    stride=2 if i < n_layers - 1 else 1  # Last layer has stride 1
+                )
+            )
+        
+        # Final layer to produce 1-channel output
+        layers.append(
+            nn.Conv2d(
+                features * mult,
+                1,
+                kernel_size=4,
+                stride=1,
+                padding=1
+            )
+        )
+        
+        self.model = nn.Sequential(self.initial, *layers)
+        
+    def forward(self, x):
+        """
+        Forward pass returns a tensor of predictions for each patch.
+        The output is not passed through sigmoid here to allow for using BCEWithLogitsLoss.
+        """
+        return self.model(x)

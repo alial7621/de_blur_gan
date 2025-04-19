@@ -1,14 +1,11 @@
 import deblur_modules.config as config
-from deblur_modules.data_loader import GoProDataLoader
+from deblur_modules.data_loader import get_data_loaders
 from deblur_modules.models import Generator, Discriminator
 from deblur_modules.metrics import PSNR, SSIM
 from deblur_modules.losses import get_gradient, gradient_penalty, wasserstein_loss, \
                                   wasserstein_loss_generator, PerceptualLoss
 
 import torch
-from torch.utils.data import DataLoader
-from torchvision import transforms
-from torch.amp import autocast
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -57,21 +54,8 @@ def train(args):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # prepare datalaoders
-    train_data = GoProDataLoader(root_path=(args.data_dir+"/train"), dataset_path=(args.dataset_dir+"/train_samples.csv"))
-    train_loader = DataLoader(train_data, batch_size=args.batch_size, shuffle=True)
-
-    test_data = GoProDataLoader(root_path=(args.data_dir+"/test"), dataset_path=(args.dataset_dir+"/test_samples.csv"))
-    test_loader = DataLoader(test_data, batch_size=args.batch_size, shuffle=True)
-
-    # Resize augmentation
-    if isinstance(args.image_size, int):
-        image_size = (args.image_size, args.image_size)
-    else:
-        image_size = tuple(args.image_size)
-
-    transform = transforms.Compose([
-        transforms.Resize(size=image_size, antialias=True)
-    ])
+    train_loader, test_loader = get_data_loaders(root_path=args.data_dir dataset_path=args.dataset_dir,
+                                                 batch_size=args.batch_size, image_size=args.image_size)
 
     # Initiate models 
     generator = Generator()
@@ -160,10 +144,7 @@ def train(args):
         critic.train()
         
         for input_data in tqdm(train_loader):
-            input_data[0], input_data[1] = (input_data[0].float()).to(device), (input_data[1].float()).to(device)
-            # Resize the images
-            sharp_images = transform(input_data[0])
-            blury_images = transform(input_data[1])
+            sharp_images, blury_images = (input_data[0].float()).to(device), (input_data[1].float()).to(device)
             
             ###########################
             # Train Critic
@@ -201,7 +182,7 @@ def train(args):
             generated_images = generator(blury_images)
 
             # get the critic score and loss
-            critic_score = critic(generated_images)
+            critic_score = critic(generated_images).detach()
             critic_loss_gen = wasserstein_loss_generator(critic_score)
 
             # get the perceptual loss and overall loss for generator
@@ -232,9 +213,7 @@ def train(args):
         generator.eval()
 
         for input_data in tqdm(test_loader):
-            input_data[0], input_data[1] = (input_data[0].float()).to(device), (input_data[1].float()).to(device)
-            sharp_images = transform(input_data[0])
-            blury_images = transform(input_data[1])
+            sharp_images, blury_images = (input_data[0].float()).to(device), (input_data[1].float()).to(device)
 
             with torch.no_grad():
                 generated_images = generator(blury_images)
