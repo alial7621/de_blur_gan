@@ -170,7 +170,7 @@ def train(args):
                 critic_loss += (final_critic_loss.item() / args.critic_update)
 
             # Compute metrics
-            train_SSIM += (SSIM(sharp_images, generated_images, device)*100)
+            train_SSIM += SSIM(sharp_images, generated_images, device)
             train_PSNR += PSNR(sharp_images, generated_images, device)
 
             ###########################
@@ -224,7 +224,7 @@ def train(args):
             with torch.no_grad():
                 generated_images = generator(blury_images)
             
-            test_SSIM += (SSIM(sharp_images, generated_images, device)*100)
+            test_SSIM += SSIM(sharp_images, generated_images, device)
             test_PSNR += PSNR(sharp_images, generated_images, device)
 
             gen_test_loss += percept_loss(sharp_images, generated_images, val=True)

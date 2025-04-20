@@ -19,6 +19,17 @@ def create_window(window_size, channel):
     return window
 
 def SSIM(img1, img2, device="cpu"):
+    """
+    Computes the Structural Similarity Index Measure (SSIM) between two images.
+    
+    Args:
+        img1 (torch.Tensor): The first image.
+        img2 (torch.Tensor): The second image.
+        device (str, optional): The device to run the computation on (cpu or cuda). Defaults to "cpu".
+
+    Returns:
+        float: The SSIM between the two images, in the range [0, 100].
+    """
     with torch.no_grad():
         img1 = img1.to(device)
         img2 = img2.to(device)
@@ -43,14 +54,21 @@ def SSIM(img1, img2, device="cpu"):
         ssim_map = ((2*mu1_mu2 + C1)*(2*sigma12 + C2))/((mu1_sq + mu2_sq + C1)*(sigma1_sq + sigma2_sq + C2))
 
         result = ssim_map.mean()
-            
-        # Clear memory after use
-        # del img1, img2, mu1, mu2, mu1_sq, mu2_sq, mu1_mu2, sigma1_sq, sigma2_sq, sigma12, window, ssim_map
-        # gc.collect()
         
-        return result
+        return result*100
 
 def PSNR(img1, img2, device="cpu"):
+    """
+    Computes the Peak Signal-to-Noise Ratio (PSNR) between two images.
+    
+    Args:
+        img1 (torch.Tensor): The first image.
+        img2 (torch.Tensor): The second image.
+        device (str, optional): The device to run the computation on (cpu or cuda). Defaults to "cpu".
+
+    Returns:
+        float: The PSNR between the two images, in the range [0, 100].
+    """
     img1 = img1.to(device)
     img2 = img2.to(device)
     
