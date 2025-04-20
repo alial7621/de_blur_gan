@@ -6,7 +6,6 @@ from deblur_modules.losses import get_gradient, gradient_penalty, wasserstein_lo
                                   wasserstein_loss_generator, PerceptualLoss
 
 import torch
-
 import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import tqdm
@@ -54,7 +53,7 @@ def train(args):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # prepare datalaoders
-    train_loader, test_loader = get_data_loaders(root_path=args.data_dir dataset_path=args.dataset_dir,
+    train_loader, test_loader = get_data_loaders(root_path=args.data_dir, dataset_path=args.dataset_dir, \
                                                  batch_size=args.batch_size, image_size=args.image_size)
 
     # Initiate models 
@@ -130,7 +129,7 @@ def train(args):
         print("There is no checkpoint. The models will be trained from the scratch")
 
     while cur_epoch <= args.epochs:
-        print(f"Epoch: {cur_epoch} of {args.epochs}")
+        # print(f"Epoch: {cur_epoch} of {args.epochs}")
         gen_loss = 0
         critic_loss = 0
         gen_test_loss = 0
@@ -143,7 +142,8 @@ def train(args):
         generator.train()
         critic.train()
         
-        for input_data in tqdm(train_loader):
+        pbar = tqdm(train_loader, desc=f"Epoch {cur_epoch}/{args.epochs}")
+        for input_data in pbar:
             sharp_images, blury_images = (input_data[0].float()).to(device), (input_data[1].float()).to(device)
             
             ###########################
@@ -193,6 +193,12 @@ def train(args):
             # train the generator model
             overall_generator_loss.backward()
             gen_optimizer.step()
+            
+            # Update progress bar
+            pbar.set_postfix({
+                'g_loss': overall_generator_loss.item(),
+                'd_loss': final_critic_loss.item()
+            })
             
         # Final training loss 
         gen_loss = gen_loss / len(train_loader)
