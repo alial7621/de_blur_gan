@@ -213,7 +213,7 @@ def train(args):
         train_PSNR_history.append(train_PSNR)
 
         print("Step/Epoch: %03d || Generator Train Loss: %.2f  Critic Loss: %.2f || SSIM Train: %.4f  PSNR Train: %.4f"
-              %(cur_epoch, gen_loss, critic_loss, train_SSIM, train_PSNR))
+              %(cur_epoch, gen_loss, critic_loss, (train_SSIM*100), train_PSNR))
 
         # Evaluate the model on Test/Val data
         generator.eval()
@@ -240,7 +240,7 @@ def train(args):
         gen_test_loss_history.append(gen_test_loss)
 
         print("Generator Test Loss: %.2f|| SSIM Test: %.4f  PSNR Test: %.4f\n"
-              %(gen_test_loss, test_SSIM, test_PSNR))
+              %(gen_test_loss, (test_SSIM*100), test_PSNR))
 
         gen_scheduler.step(test_SSIM)
         critic_scheduler.step(critic_loss)
