@@ -4,6 +4,63 @@ from torch.nn import MSELoss, Module
 import torch
 from torch import nn
 
+class GANLoss(nn.Module):
+    """
+    GAN loss base class.
+    Supports different GAN loss formulations.
+    """
+    def __init__(self, gan_mode='vanilla', target_real_label=1.0, target_fake_label=0.0):
+        """
+        Initialize the GANLoss class.
+        
+        Args:
+            gan_mode (str): Type of GAN loss ('vanilla', 'lsgan', 'wgangp')
+            target_real_label (float): Value for real label
+            target_fake_label (float): Value for fake label
+        """
+        super(GANLoss, self).__init__()
+        self.gan_mode = gan_mode
+        self.register_buffer('real_label', torch.tensor(target_real_label))
+        self.register_buffer('fake_label', torch.tensor(target_fake_label))
+        
+        if gan_mode == 'vanilla':
+            self.loss = nn.BCEWithLogitsLoss()
+        elif gan_mode == 'lsgan':
+            self.loss = nn.MSELoss()
+        elif gan_mode == 'wgangp':
+            self.loss = None  # No loss function, handled in forward
+        else:
+            raise NotImplementedError(f'GAN mode {gan_mode} not implemented')
+    
+    def get_target_tensor(self, prediction, target_is_real):
+        """Create label tensors with the same size as the input."""
+        if target_is_real:
+            target_tensor = self.real_label
+        else:
+            target_tensor = self.fake_label
+        return target_tensor.expand_as(prediction)
+    
+    def forward(self, prediction, target_is_real):
+        """
+        Calculate loss given discriminator predictions and if target is real/fake.
+        
+        Args:
+            prediction: Discriminator predictions
+            target_is_real: Whether the target is real or fake
+            
+        Returns:
+            loss: Calculated loss
+        """
+        if self.gan_mode == 'wgangp':
+            if target_is_real:
+                return -prediction.mean()
+            else:
+                return prediction.mean()
+        else:
+            target_tensor = self.get_target_tensor(prediction, target_is_real)
+            return self.loss(prediction, target_tensor)
+        
+        
 class PerceptualLoss(Module):
     """
     Perceptual loss is an MSE loss between the intermediate embeddings of two images using a pre-trained ResNet model.
