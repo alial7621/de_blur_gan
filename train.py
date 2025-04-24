@@ -9,6 +9,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 import os
+import warnings
 
 def num_params_func(model):
     """
@@ -324,6 +325,9 @@ if __name__ == '__main__':
     parser = config.get_argparser()
 
     args = parser.parse_args()
+
+    # filter UserWarning
+    warnings.filterwarnings("ignore", category=UserWarning)
 
     # Create checkpoint directory
     if not os.path.exists(args.checkpoint_dir):
