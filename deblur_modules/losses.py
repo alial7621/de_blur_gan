@@ -60,7 +60,7 @@ class GANLoss(nn.Module):
             target_tensor = self.get_target_tensor(prediction, target_is_real)
             return self.loss(prediction, target_tensor)
         
-        
+
 class PerceptualLoss(Module):
     """
     Perceptual loss is an MSE loss between the intermediate embeddings of two images using a pre-trained ResNet model.
@@ -86,49 +86,56 @@ class PerceptualLoss(Module):
 
         return self.mse_loss(real_img_embed, gen_img_embed)
 
-def gradient_penalty(gradient):
-    """
-    This function calculates the gradient penalty term, which is used to enforce the Lipschitz constraint in Wasserstein GANs.
-    The source of the function: https://www.kaggle.com/code/rafat97/pytorch-wasserstein-gan-wgan
-    """
-    gradient = gradient.reshape(len(gradient), -1)
 
-    gradient_norm = gradient.norm(2, dim=1)
+class GradientPenalty(nn.Module):
+    """
+    Gradient Penalty for WGAN-GP.
+    Enforces Lipschitz constraint on discriminator.
+    """
+    def __init__(self, lambda_gp=10.0):
+        """
+        Initialize the GradientPenalty class.
+        
+        Args:
+            lambda_gp (float): Weight for gradient penalty
+        """
+        super(GradientPenalty, self).__init__()
+        self.lambda_gp = lambda_gp
     
-    penalty = torch.mean((gradient_norm - 1)**2)
-    return penalty
-
-def get_gradient(critic, sharp_images, generated_images, epsilon):
-    """
-    This function computes the gradient of the critic's scores with respect to the mixed images.
-    The source of the function: https://www.kaggle.com/code/rafat97/pytorch-wasserstein-gan-wgan
-    """
-
-    mixed_images = sharp_images * epsilon + generated_images * (1 - epsilon)
-
-    mixed_scores = critic(mixed_images)
-    
-    gradient = torch.autograd.grad(
-        inputs=mixed_images,
-        outputs=mixed_scores,
-        grad_outputs=torch.ones_like(mixed_scores), 
-        create_graph=True,
-        retain_graph=True 
-    )[0]
-    return gradient
-
-def wasserstein_loss(critic_score_gen, critic_score_sharp, gp, c_lambda):
-    """
-    This function computes the critic loss for training the critic in a Wasserstein GAN.
-    The source of the function: https://www.kaggle.com/code/rafat97/pytorch-wasserstein-gan-wgan
-    """
-    critic_loss = torch.mean(critic_score_gen) - torch.mean(critic_score_sharp) + c_lambda * gp
-    return critic_loss
-
-def wasserstein_loss_generator(critic_score_gen):
-    """
-    This function computes the critic loss for training the generator in a Wasserstein GAN.
-    The source of the function: https://www.kaggle.com/code/rafat97/pytorch-wasserstein-gan-wgan
-    """
-    gen_loss = -1. * torch.mean(critic_score_gen)
-    return gen_loss
+    def forward(self, discriminator, sharp_images, generated_images):
+        """
+        Calculate gradient penalty.
+        
+        Args:
+            discriminator: Discriminator model
+            sharp_images: Real images
+            generated_images: Generated images
+            
+        Returns:
+            gradient_penalty: Calculated gradient penalty
+        """
+        # Get random interpolation between real and fake samples
+        batch_size = sharp_images.size(0)
+        alpha = torch.rand(batch_size, 1, 1, 1).to(sharp_images.device)
+        interpolates = alpha * sharp_images + (1 - alpha) * generated_images
+        interpolates.requires_grad_(True)
+        
+        # Calculate discriminator output for interpolated images
+        d_interpolates = discriminator(interpolates)
+        
+        # Get gradients
+        gradients = torch.autograd.grad(
+            outputs=d_interpolates,
+            inputs=interpolates,
+            grad_outputs=torch.ones_like(d_interpolates),
+            create_graph=True,
+            retain_graph=True,
+            only_inputs=True
+        )[0]
+        
+        # Calculate gradient penalty
+        gradients = gradients.view(batch_size, -1)
+        gradient_norm = gradients.norm(2, dim=1)
+        gradient_penalty = ((gradient_norm - 1) ** 2).mean()
+        
+        return self.lambda_gp * gradient_penalty
