@@ -139,3 +139,42 @@ class GradientPenalty(nn.Module):
         gradient_penalty = ((gradient_norm - 1) ** 2).mean()
         
         return self.lambda_gp * gradient_penalty
+    
+
+class TVLoss(nn.Module):
+    """
+    Total Variation Loss for spatial smoothness.
+    Encourages spatial smoothness in the generated image.
+    """
+    def __init__(self, lambda_tv=0.1):
+        """
+        Initialize the TVLoss class.
+        
+        Args:
+            lambda_tv (float): Weight for TV loss
+        """
+        super(TVLoss, self).__init__()
+        self.lambda_tv = lambda_tv
+    
+    def forward(self, x):
+        """
+        Calculate total variation loss.
+        
+        Args:
+            x: Input image
+            
+        Returns:
+            loss: Calculated TV loss
+        """
+        batch_size = x.size()[0]
+        h_x = x.size()[2]
+        w_x = x.size()[3]
+        count_h = self._tensor_size(x[:, :, 1:, :])
+        count_w = self._tensor_size(x[:, :, :, 1:])
+        h_tv = torch.pow((x[:, :, 1:, :] - x[:, :, :h_x-1, :]), 2).sum()
+        w_tv = torch.pow((x[:, :, :, 1:] - x[:, :, :, :w_x-1]), 2).sum()
+        return self.lambda_tv * (h_tv + w_tv) / (batch_size * count_h * count_w)
+    
+    def _tensor_size(self, t):
+        """Calculate the total number of elements in a tensor."""
+        return t.size()[1] * t.size()[2] * t.size()[3]
