@@ -2,8 +2,7 @@ import deblur_modules.config as config
 from deblur_modules.data_loader import get_data_loaders
 from deblur_modules.models import Generator, Discriminator
 from deblur_modules.metrics import PSNR, SSIM
-from deblur_modules.losses import get_gradient, gradient_penalty, wasserstein_loss, \
-                                  wasserstein_loss_generator, PerceptualLoss
+from deblur_modules.losses import GANLoss, ContentLoss, TVLoss, GradientPenalty
 
 import torch
 import numpy as np
@@ -83,7 +82,14 @@ def train(args):
     print(f"Number of trainable parameters in the discriminator model: {num_trainables}\n")
 
     # Loss functions and optimizers
-    percept_loss = PerceptualLoss(device)
+    gan_loss = GANLoss(gan_mode=args.gan_mode).to(device)
+    content_loss = ContentLoss(loss_type=args.content_loss_type, lambda_content=args.lambda_content).to(device)
+
+    if args.use_tv_loss:
+        tv_loss = TVLoss(lambda_tv=args.lambda_tv).to(device)
+
+    if args.gan_mode == 'wgangp':
+        gradient_penalty = GradientPenalty(lambda_gp=args.lambda_gp).to(device)
 
     gen_optimizer = torch.optim.Adam(generator.parameters(), lr=args.g_lr, 
                                         betas=(args.momentum1, args.momentum2))
@@ -167,12 +173,15 @@ def train(args):
             for _ in range(args.critic_update):  
                 # train the critic model on the original image
                 critic_score_sharp = critic(sharp_images)
-                critic_score_gen = critic(generated_images)
+                critic_sharp_loss = gan_loss(critic_score_sharp, True)
 
-                epsilon = torch.rand(len(sharp_images), 1, 1, 1, device=device, requires_grad=True)
-                gradient = get_gradient(critic, sharp_images, generated_images, epsilon)
-                gp = gradient_penalty(gradient)
-                final_critic_loss = wasserstein_loss(critic_score_gen, critic_score_sharp, gp, args.c_lambda)
+                critic_score_gen = critic(generated_images)
+                critic_gen_loss = gan_loss(critic_score_gen, False)
+
+                final_critic_loss = (critic_sharp_loss + critic_gen_loss) * 0.5
+
+                if args.gan_mode == 'wgangp':
+                    final_critic_loss += gradient_penalty(critic, sharp_images, generated_images)
 
                 final_critic_loss.backward()
 
@@ -192,13 +201,19 @@ def train(args):
             # Forward pass through generator
             generated_images = generator(blury_images)
 
-            # get the critic score and loss
+            # Adversarial loss
             critic_score = critic(generated_images).detach()
-            critic_loss_gen = wasserstein_loss_generator(critic_score)
+            adv_loss = gan_loss(critic_score, True)
 
-            # get the perceptual loss and overall loss for generator
-            perceptual_loss = percept_loss(sharp_images, generated_images)
-            overall_generator_loss = (args.percept_weight * perceptual_loss) + critic_loss_gen
+            # content loss 
+            cal_content_loss = content_loss(generated_images, sharp_images)
+            overall_generator_loss = (args.lambda_content * cal_content_loss) + adv_loss
+
+            # TV Loss
+            cal_tv_loss = tv_loss(generated_images) if args.use_tv_loss else 0
+
+            overall_generator_loss += cal_tv_loss
+
             gen_loss += overall_generator_loss.item()
 
             # train the generator model
@@ -238,7 +253,10 @@ def train(args):
             test_SSIM += SSIM(sharp_images, generated_images, device)
             test_PSNR += PSNR(sharp_images, generated_images, device)
 
-            gen_test_loss += percept_loss(sharp_images, generated_images, val=True)
+            gen_test_loss += content_loss(generated_images, sharp_images)
+            cal_tv_loss = tv_loss(generated_images) if args.use_tv_loss else 0
+
+            gen_test_loss += cal_tv_loss
             
 
         test_SSIM = test_SSIM / len(test_loader)

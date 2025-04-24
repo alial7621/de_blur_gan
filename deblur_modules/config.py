@@ -12,7 +12,7 @@ def get_argparser():
     parser.add_argument("--trained_model", type=str, default="./checkpoints/models/best_model.pt")
 
     # Train
-    parser.add_argument("--use_manual_seed", type=bool, default=False, help="Whether use manual seed or not")
+    parser.add_argument("--use_manual_seed", action="store_true", help="Whether use manual seed or not")
     parser.add_argument("--seed", type=int, default=72322)
     parser.add_argument("--image_size", type=int, nargs="+", default=256,
                         help="Size of the input image to the model. It should be entered like two seperated integer number. Default=256x256")
@@ -24,13 +24,24 @@ def get_argparser():
                         help="Saving the model weights and loss/metric plots after every these many steps")
     parser.add_argument("--load_checkpoint", type=str, default="./checkpoints/models/last_model.pt",
                         help="Start from the last checkpoint. Always refer as last_model.pt")
-    parser.add_argument("--c_lambda", type=float, default=10,
+    
+    ## Loss 
+    parser.add_argument("--gan_mode", type=str, default='vanilla',
+                        help="indicate the loss type (vanilla, lsgan, or wgangp)")
+    parser.add_argument("--content_loss_type", type=str, default='l1',
+                        help="indicate the content loss type (l1, l2, or perceptual)")
+    parser.add_argument("--use_tv_loss", action="store_true", help="Using tv loss")
+    parser.add_argument("--lambda_tv", type=float, default=0.1,
+                        help="indicate the amount of the tv loss")
+    parser.add_argument("--lambda_gp", type=float, default=10,
                         help="indicate the amount of the gradient penalty in critic loss")
-    parser.add_argument("--percept_weight", type=float, default=100,
+    parser.add_argument("--lambda_content", type=float, default=100,
                         help="Weight of the perceptual loss in the calculation of the generator model loss")
     
     # Optimizer and scheduler
-    parser.add_argument("--init_lr", type=float, default=1e-2,
+    parser.add_argument("--g_lr", type=float, default=2e-4,
+                        help="Initial learning rate for scheduler")
+    parser.add_argument("--d_lr", type=float, default=2e-4,
                         help="Initial learning rate for scheduler")
     parser.add_argument("--final_lr", type=float, default=1e-6,
                         help="Final learning rate for scheduler")
