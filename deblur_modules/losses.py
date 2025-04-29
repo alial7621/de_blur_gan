@@ -1,4 +1,4 @@
-from torchvision import models
+from torchvision.models import resnet50
 import torch.nn.functional as F
 import torch
 from torch import nn
@@ -65,14 +65,13 @@ class ContentLoss(nn.Module):
     Content loss for image similarity.
     Supports L1, L2, and perceptual losses.
     """
-    def __init__(self, loss_type='l1', lambda_content=100.0, perceptual_layers=None):
+    def __init__(self, loss_type='l1', lambda_content=100.0):
         """
         Initialize the ContentLoss class.
         
         Args:
             loss_type (str): Type of content loss ('l1', 'l2', 'perceptual')
             lambda_content (float): Weight for content loss
-            perceptual_layers (list): VGG layers to use for perceptual loss
         """
         super(ContentLoss, self).__init__()
         self.loss_type = loss_type
@@ -83,42 +82,19 @@ class ContentLoss(nn.Module):
         elif loss_type == 'l2':
             self.loss = nn.MSELoss()
         elif loss_type == 'perceptual':
-            self.loss = nn.L1Loss()
-            self.perceptual_layers = perceptual_layers or ['conv1_2', 'conv2_2', 'conv3_3', 'conv4_3']
-            self.vgg = self._get_vgg_model()
+            self.loss = nn.MSELoss()
+            self.res_feat = self._get_resnet_model()
         else:
             raise NotImplementedError(f'Content loss type {loss_type} not implemented')
     
-    def _get_vgg_model(self):
-        """Get pre-trained VGG model for perceptual loss."""
-        vgg = models.vgg16(pretrained=True).features
-        vgg.eval()
-        for param in vgg.parameters():
+    def _get_resnet_model(self):
+        """Get pre-trained ResNet model for perceptual loss."""
+        resnet = resnet50(weights="IMAGENET1K_V1")
+        resnet.eval()
+        res_feat = nn.Sequential(*list(resnet.children())[:-2])
+        for param in res_feat.parameters():
             param.requires_grad = False
-        return vgg
-    
-    def _get_vgg_features(self, x, layers):
-        """Extract features from VGG model at specified layers."""
-        features = {}
-        layer_names = {
-            'conv1_1': '0', 'conv1_2': '2',
-            'conv2_1': '5', 'conv2_2': '7',
-            'conv3_1': '10', 'conv3_2': '12', 'conv3_3': '14',
-            'conv4_1': '17', 'conv4_2': '19', 'conv4_3': '21',
-            'conv5_1': '24', 'conv5_2': '26', 'conv5_3': '28'
-        }
-        
-        # Convert layer names to indices
-        indices = [int(layer_names[layer]) for layer in layers if layer in layer_names]
-        
-        # Extract features
-        for i, module in enumerate(self.vgg):
-            x = module(x)
-            if i in indices:
-                layer_name = [k for k, v in layer_names.items() if int(v) == i][0]
-                features[layer_name] = x
-        
-        return features
+        return res_feat
     
     def forward(self, prediction, target):
         """
@@ -134,26 +110,21 @@ class ContentLoss(nn.Module):
         if self.loss_type in ['l1', 'l2']:
             return self.lambda_content * self.loss(prediction, target)
         elif self.loss_type == 'perceptual':
-            # Normalize to VGG input range
+            # Normalize to ResNet input range
             prediction = (prediction + 1) / 2  # [-1, 1] -> [0, 1]
             target = (target + 1) / 2
             
-            # VGG normalization
+            # ResNet normalization
             mean = torch.tensor([0.485, 0.456, 0.406]).view(1, 3, 1, 1).to(prediction.device)
             std = torch.tensor([0.229, 0.224, 0.225]).view(1, 3, 1, 1).to(prediction.device)
             prediction = (prediction - mean) / std
             target = (target - mean) / std
             
-            # Get VGG features
-            pred_features = self._get_vgg_features(prediction, self.perceptual_layers)
-            target_features = self._get_vgg_features(target, self.perceptual_layers)
+            # Get ResNet features
+            pred_features = self.res_feat(prediction)
+            target_features = self.res_feat(target)
             
-            # Calculate perceptual loss
-            perceptual_loss = 0
-            for layer in self.perceptual_layers:
-                if layer in pred_features and layer in target_features:
-                    perceptual_loss += self.loss(pred_features[layer], target_features[layer])
-            
+            perceptual_loss = self.loss(target_features, pred_features)
             return self.lambda_content * perceptual_loss
         
 

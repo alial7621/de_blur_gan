@@ -57,8 +57,8 @@ def train(args):
                                                  batch_size=args.batch_size, image_size=args.image_size)
 
     # Define the directory paths
-    model_dir = os.path.join(args.checkpoint_dir, "/models/")
-    history_dir = os.path.join(args.checkpoint_dir, "/history/")
+    model_dir = os.path.join(args.checkpoint_dir, "models")
+    history_dir = os.path.join(args.checkpoint_dir, "history")
 
     # Check if the directories exist and create them if they don't
     if not os.path.exists(model_dir):
