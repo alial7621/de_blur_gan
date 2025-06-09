@@ -1,9 +1,5 @@
-torch
-torchvision
-numpy
-matplotlib
+matplotlib==3.10.1
 opencv-python
-tqdm
+tqdm==4.67.1
 click
-pandas
-argparse
+pandas==2.2.3
