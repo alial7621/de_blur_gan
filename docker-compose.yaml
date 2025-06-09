@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  de_blur_gan:
+    build: .
+    image: de_blur_gan:latest
+    container_name: de_blur_gan
+    
+    # GPU support
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    
+    # Volume mounts - only checkpoints directory
+    volumes:
+      - ./checkpoints:/app/checkpoints              # Mount checkpoints directory with models and plots
+      - ./data/dataset:/app/data/dataset:ro         # Read-only mount for large dataset
+    
+    # Environment variables
+    environment:
+      - PYTHONPATH=/app
+      - CUDA_VISIBLE_DEVICES=0        # Specify which GPU to use (optional)
+    
+    # Keep container running for interactive use
+    stdin_open: true
+    tty: true
+    
+    # Restart policy
+    restart: unless-stopped

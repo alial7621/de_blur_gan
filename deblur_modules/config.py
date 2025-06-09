@@ -8,7 +8,7 @@ def get_argparser():
     parser.add_argument("--checkpoint_dir", type=str, default="./checkpoints")
     parser.add_argument("--dataset_dir", type=str, default="./data", 
                         help="path to the dataset csv file")
-    parser.add_argument("--data_dir", type=str, default="/content")
+    parser.add_argument("--data_dir", type=str, default="/data/dataset")
     parser.add_argument("--trained_model", type=str, default="./checkpoints/models/best_model.pt")
 
     # Train
